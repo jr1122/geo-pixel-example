@@ -1,11 +1,8 @@
 import React, { useState } from 'react';
+import * as math from 'mathjs';
 import planImage from './plan.png'
 
-
-// Hilfsfunktion zur Berechnung der affinen Transformation
 const calculateAffineTransformation = (points, gpsCoords) => {
-  const Math = require('mathjs');
-
   const A = [];
   const B = [];
 
@@ -16,18 +13,23 @@ const calculateAffineTransformation = (points, gpsCoords) => {
     B.push(gpsCoords[i].lon);
   }
 
-  // Verwende das least squares method (Lösungen linearer Gleichungssysteme)
-  const A_matrix = Math.matrix(A);
-  const B_matrix = Math.matrix(B);
-  const affineParams = Math.lusolve(A_matrix, B_matrix);
+  try {
+    const A_matrix = math.matrix(A);
+    const B_matrix = math.matrix(B);
 
-  return affineParams;
+    const A_pseudoInverse = math.pinv(A_matrix);
+    const affineParams = math.multiply(A_pseudoInverse, B_matrix);
+
+    return affineParams;
+  } catch (error) {
+    console.error("Fehler beim Berechnen der affinen Transformation:", error);
+    return null;
+  }
 };
 
-// Transformation von Pixeln zu GPS-Koordinaten
 const transformPointToGPS = (x, y, affineParams) => {
-  const lat = affineParams[0] * x + affineParams[1] * y + affineParams[2];
-  const lon = affineParams[3] * x + affineParams[4] * y + affineParams[5];
+  const lat = affineParams.get([0]) * x + affineParams.get([1]) * y + affineParams.get([2]);
+  const lon = affineParams.get([3]) * x + affineParams.get([4]) * y + affineParams.get([5]);
   return { lat, lon };
 };
 
@@ -55,7 +57,12 @@ const GeoReferencing = () => {
   const handleCalculateTransformation = () => {
     if (points.length === 4 && gpsCoords.length === 4) {
       const params = calculateAffineTransformation(points, gpsCoords);
-      setAffineParams(params);
+      if (params) {
+        setAffineParams(params);
+        alert("Transformation erfolgreich berechnet!");
+      } else {
+        alert("Fehler bei der Berechnung der Transformation.");
+      }
     }
   };
 
@@ -73,12 +80,29 @@ const GeoReferencing = () => {
     <div>
       <h1>Georeferenzierung des Grundrisses</h1>
       <p>Klicken Sie auf das Bild, um 4 Kontrollpunkte auszuwählen und geben Sie die entsprechenden GPS-Koordinaten ein.</p>
-      <img
-        src={planImage}
-        alt="Grundriss"
-        onClick={handleImageClick}
-        style={{ border: '2px solid black', cursor: 'pointer' }}
-      />
+      <div style={{ position: 'relative', display: 'inline-block' }}>
+        <img
+          src={planImage}
+          alt="Grundriss"
+          onClick={handleImageClick}
+          style={{ border: '1px solid black', cursor: 'pointer' }}
+        />
+        {points.map((point, index) => (
+          <div
+            key={index}
+            style={{
+              position: 'absolute',
+              top: point.y - 5,
+              left: point.x - 5,
+              width: 10,
+              height: 10,
+              backgroundColor: 'red',
+              borderRadius: '50%',
+              pointerEvents: 'none',
+            }}
+          />
+        ))}
+      </div>
       <div>
         {points.map((point, index) => (
           <div key={index}>
@@ -109,7 +133,7 @@ const GeoReferencing = () => {
         src={planImage}
         alt="Grundriss"
         onClick={handleTransformClick}
-        style={{ border: '2px solid red', cursor: 'crosshair' }}
+        style={{ border: '1px solid red', cursor: 'crosshair' }}
       />
     </div>
   );
