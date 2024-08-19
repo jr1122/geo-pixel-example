@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import * as math from 'mathjs';
+import planImage from './plan.png'
 
 const calculateAffineTransformation = (points, gpsCoords) => {
   const A = [];
