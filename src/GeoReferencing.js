@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import * as math from 'mathjs';
-import planImage from './plan.png'
 
 const calculateAffineTransformation = (points, gpsCoords) => {
   const A = [];
@@ -31,6 +30,23 @@ const transformPointToGPS = (x, y, affineParams) => {
   const lat = affineParams.get([0]) * x + affineParams.get([1]) * y + affineParams.get([2]);
   const lon = affineParams.get([3]) * x + affineParams.get([4]) * y + affineParams.get([5]);
   return { lat, lon };
+};
+
+// Neue Funktion zur Umrechnung von GPS-Koordinaten in Bildkoordinaten
+const transformGPSToPoint = (lat, lon, affineParams) => {
+  const A = [
+    [affineParams.get([0]), affineParams.get([1]), affineParams.get([2])],
+    [affineParams.get([3]), affineParams.get([4]), affineParams.get([5])],
+    [0, 0, 1]
+  ];
+
+  const A_inv = math.inv(A);
+  const result = math.multiply(A_inv, [lat, lon, 1]);
+
+  const x = result[0];
+  const y = result[1];
+
+  return { x, y };
 };
 
 const GeoReferencing = () => {
@@ -73,6 +89,15 @@ const GeoReferencing = () => {
       const y = e.clientY - rect.top;
       const gps = transformPointToGPS(x, y, affineParams);
       alert(`GPS Coordinates: Latitude: ${gps.lat}, Longitude: ${gps.lon}`);
+    }
+  };
+
+  const handleGPSToPixelClick = () => {
+    if (affineParams) {
+      const lat = parseFloat(prompt("Geben Sie die Latitude ein:"));
+      const lon = parseFloat(prompt("Geben Sie die Longitude ein:"));
+      const pixelCoords = transformGPSToPoint(lat, lon, affineParams);
+      alert(`Pixel Coordinates: X: ${pixelCoords.x}, Y: ${pixelCoords.y}`);
     }
   };
 
@@ -135,6 +160,7 @@ const GeoReferencing = () => {
         onClick={handleTransformClick}
         style={{ border: '1px solid red', cursor: 'crosshair' }}
       />
+      <button onClick={handleGPSToPixelClick}>GPS zu Pixel umrechnen</button>
     </div>
   );
 };
